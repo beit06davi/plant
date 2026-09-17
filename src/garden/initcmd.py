@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import difflib
 import json
+import re
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -20,6 +21,11 @@ HOOK_MARK = "-m garden hook"
 BLOCK_START = "<!-- garden:start -->"
 BLOCK_END = "<!-- garden:end -->"
 CARD_KEYS = ("purpose", "why", "serves", "priority", "needs", "provides")
+# signs of garden 0.3 instructions left in a project
+LEGACY_TEXT = re.compile(
+    r"garden (?:route|sprout|ring|harvest|review|impact|prune|roles|events|validate)\b|root-worker|shoot-worker"
+)
+LEGACY_AGENTS = (".claude/agents/root-worker.md", ".claude/agents/shoot-worker.md")
 
 
 class InitError(Exception):
@@ -96,6 +102,7 @@ class InitResult:
     updated: list[str] = field(default_factory=list)
     skipped: list[str] = field(default_factory=list)
     settings_diff: str = ""
+    notes: list[str] = field(default_factory=list)
 
 
 def _write(path: Path, content: str) -> None:
@@ -143,13 +150,29 @@ def init(
         result.created.append("CLAUDE.md")
         if not dry_run:
             _write(claude_md, block)
-    elif BLOCK_START in read_text(claude_md):
-        result.skipped.append("CLAUDE.md")
     else:
-        result.updated.append("CLAUDE.md")
-        if not dry_run:
-            before = read_text(claude_md).rstrip("\n")
-            _write(claude_md, f"{before}\n\n{block}")
+        current = read_text(claude_md)
+        outside = re.sub(re.escape(BLOCK_START) + r".*?" + re.escape(BLOCK_END), "", current, flags=re.S)
+        if LEGACY_TEXT.search(outside):
+            result.notes.append(
+                "CLAUDE.md에 이전 버전(0.3) garden 안내가 남아 있음 (route·sprout·ring 같은 없는 명령) — 그 부분을 지운다"
+            )
+        if BLOCK_START in current:
+            result.skipped.append("CLAUDE.md")
+        else:
+            result.updated.append("CLAUDE.md")
+            if not dry_run:
+                _write(claude_md, f"{current.rstrip()}\n\n{block}")
+    old_agents = [rel for rel in LEGACY_AGENTS if (root / rel).is_file()]
+    if old_agents:
+        result.notes.append(f"이전 버전(0.3)이 설치한 에이전트는 더 쓰지 않음: {', '.join(old_agents)} — 지워도 됨")
+    old_skills = []
+    for skill_md in sorted((root / ".claude" / "skills").glob("*/SKILL.md")):
+        text = read_text(skill_md)
+        if "-m garden" in text and LEGACY_TEXT.search(text):
+            old_skills.append(f".claude/skills/{skill_md.parent.name}")
+    if old_skills:
+        result.notes.append(f"이전 버전(0.3) 스킬이 없는 명령을 부름: {', '.join(old_skills)} — 지워도 됨")
 
     if plugin:
         return result
@@ -214,7 +237,7 @@ def add(
         if unknown:
             raise InitError(f"SEED에 없는 목표: {', '.join(unknown)} (있는 목표: {', '.join(known) or '없음'})")
     if priority is not None and priority < 1:
-        raise InitError("priority는 1 이상의 정수입니다 (1이 형제 중 먼저)")
+        raise InitError("priority는 1 이상의 정수입니다 (1이 형제 중 가장 중요)")
     needs = [n.replace("\\", "/").strip("/") for n in (needs or [])]
     for target in needs:
         if target == rel:
@@ -226,5 +249,8 @@ def add(
     path = g.root / rel / "NODE.md"
     _write(path, card_text(meta, body))
     if lock.lock_path(g).is_file() and needs:
-        lock.lock_missing(Garden.load(g.root), today=today)
+        try:
+            lock.lock_missing(Garden.load(g.root), today=today)
+        except lock.LockError:
+            pass  # the card is written; `garden check` reports the unreadable lock
     return path

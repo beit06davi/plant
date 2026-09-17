@@ -7,11 +7,13 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from garden.history import history_since, log, today_str
-from garden.model import Node
+from garden.model import TOP, Node
 from garden.tree import Garden
 from garden.validate import Finding
 
 LOCK_REL = ".garden/concept.lock"
+UNREADABLE = "`.garden/concept.lock`을 읽을 수 없음 (병합 충돌 등) — `garden lock --force`로 다시 기록"
+LEGACY_TOP = "seed"  # parent id of top-level cards in early 0.4 lock files
 DIFF_LIMIT = 600
 _EMPHASIS = re.compile(r"\*\*|__")
 
@@ -60,12 +62,26 @@ def _empty() -> dict:
 
 
 def load_lock(g: Garden) -> dict:
+    """Raises LockError when the file exists but is not a lock this version can read."""
     path = lock_path(g)
     if not path.is_file():
         return _empty()
-    data = json.loads(path.read_text(encoding="utf-8-sig"))
+    try:
+        data = json.loads(path.read_text(encoding="utf-8-sig"))
+    except (ValueError, OSError) as e:
+        raise LockError(f"{UNREADABLE} [{e.__class__.__name__}]") from e
+    if not isinstance(data, dict):
+        raise LockError(UNREADABLE)
     base = _empty()
-    base.update({k: v for k, v in data.items() if k in base})
+    base["version"] = data.get("version", 1)
+    for key in ("nodes", "edges", "snapshots"):
+        value = data.get(key, {})
+        if not isinstance(value, dict):
+            raise LockError(UNREADABLE)
+        base[key] = value
+    entries = list(base["nodes"].values()) + list(base["edges"].values())
+    if not all(isinstance(e, dict) for e in entries) or not all(isinstance(t, str) for t in base["snapshots"].values()):
+        raise LockError(UNREADABLE)
     return base
 
 
@@ -115,13 +131,23 @@ def pending(g: Garden, data: dict | None = None) -> list[Pending]:
     return out
 
 
+def safe_pending(g: Garden) -> list[Pending]:
+    """Pending changes, or [] when there is no lock or it cannot be read (`check` reports that case)."""
+    if not lock_path(g).is_file():
+        return []
+    try:
+        return pending(g)
+    except LockError:
+        return []
+
+
 def status(g: Garden) -> list[Finding]:
     if not lock_path(g).is_file():
         return [Finding("warning", "lock-missing", LOCK_REL, "concept.lock 없음 — `garden lock`으로 기록")]
     try:
         data = load_lock(g)
-    except (ValueError, OSError) as e:
-        return [Finding("error", "lock-parse", LOCK_REL, f"concept.lock을 읽을 수 없음: {e}")]
+    except LockError as e:
+        return [Finding("error", "lock-parse", LOCK_REL, str(e))]
     out = [Finding("review", "change-pending", p.a, pending_line(p.a, p.b)) for p in pending(g, data)]
     current = {edge_key(a, b) for a, b in edges(g)}
     for key in sorted(current - set(data["edges"])):
@@ -130,9 +156,12 @@ def status(g: Garden) -> list[Finding]:
         out.append(Finding("warning", "edge-stale", key.split(" <- ")[0], f"없어진 연결 {key} — `garden lock --missing`로 정리"))
     for node_id, entry in sorted(data["nodes"].items()):
         node = g.nodes.get(node_id)
-        if node is not None and entry.get("parent") != node.parent:
+        before = entry.get("parent")
+        if before == LEGACY_TOP and LEGACY_TOP not in g.nodes:
+            before = TOP
+        if node is not None and before != node.parent:
             out.append(Finding("warning", "parent-changed", node_id,
-                               f"상위 폴더 변경: {entry.get('parent')} → {node.parent} — 확인 후 `garden lock --missing`"))
+                               f"상위 폴더 변경: {before or 'SEED'} → {node.parent or 'SEED'} — 확인 후 `garden lock --missing`"))
     return out
 
 
@@ -141,7 +170,12 @@ def _node_entries(g: Garden) -> dict:
 
 
 def lock_all(g: Garden, force: bool = False, today: str | None = None) -> tuple[bool, str]:
-    old = load_lock(g)
+    try:
+        old = load_lock(g)
+    except LockError as e:
+        if not force:
+            return False, str(e)
+        old = _empty()
     waiting = pending(g, old)
     if waiting and not force:
         return False, f"확인 대기 {len(waiting)}건이 있어 중단 — `garden ack` 후 다시 실행하거나 --force"
@@ -243,8 +277,3 @@ def alert_text(g: Garden, pendings: list[Pending], limit: int = DIFF_LIMIT) -> s
         lines.append(f"    처리: {p.a}에 영향이 있는지 확인한 뒤 `garden ack {p.a} --from {p.b}`")
     return "\n".join(lines)
 
-
-def remaining_for(g: Garden, node_ids: set[str]) -> list[Pending]:
-    if not lock_path(g).is_file():
-        return []
-    return [p for p in pending(g) if p.a in node_ids or p.b in node_ids]

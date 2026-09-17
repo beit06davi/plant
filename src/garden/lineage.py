@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from garden.model import DETAILS, Node
+from garden.model import DETAILS, TOP, Node
 from garden.tree import Garden
 
 KEEP = 0  # trim levels: higher numbers are dropped first when over budget
@@ -28,7 +28,7 @@ def _clip(text: str, limit: int) -> str:
 
 
 def _parent_label(node: Node) -> str:
-    return "SEED" if node.parent == "seed" else node.parent
+    return "SEED" if node.parent == TOP else node.parent
 
 
 def trace_text(g: Garden, node: Node) -> str:
@@ -38,7 +38,7 @@ def trace_text(g: Garden, node: Node) -> str:
     lines.append("SEED")
     for depth, n in enumerate(chain):
         pad = "   " * depth
-        rank = f" (순위 {n.priority})" if n.priority is not None else ""
+        rank = f" (중요도 {n.priority})" if n.priority is not None else ""
         lines.append(f"{pad}└─ {n.id} — {n.purpose}{rank}")
         if n.why:
             lines.append(f"{pad}   이유: {n.why}")
@@ -74,9 +74,9 @@ def _lines(g: Garden, node: Node, detail: str, pending: list[str]) -> tuple[list
         lines.append(Line("why", f"why: {node.why}"))
     siblings = g.siblings(node)
     if len(siblings) > 1:
-        order = " > ".join(f"{s.id}({s.priority})" if s.priority is not None else s.id for s in siblings)
+        ranked = " > ".join(f"{s.id}({s.priority})" if s.priority is not None else s.id for s in siblings)
         position = siblings.index(node) + 1
-        lines.append(Line("order", f"order: {_parent_label(node)} 아래 {position}번째 — {order}", trim=2))
+        lines.append(Line("siblings", f"siblings: {_parent_label(node)} 아래 중요도 순 — {ranked} (이 폴더: {position}번째)", trim=2))
     for target in node.needs:
         other = g.nodes.get(target)
         if other is None:

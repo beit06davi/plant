@@ -8,7 +8,10 @@ import yaml
 from garden.cards import CardFile, read_text
 
 DETAILS = ("none", "concept", "full")
+TOP = ""  # parent id of top-level cards (their parent is SEED); never a folder id
 ALWAYS_IGNORE = [".git/**", ".garden/**"]
+# keys written by garden 0.3; 0.4 ignores them
+LEGACY_CONFIG_KEYS = ("garden_version", "read_scope", "zones", "roles", "unmapped_role", "shared_read")
 DEFAULT_IGNORE = [".git/**", ".garden/**", ".claude/**", "node_modules/**", ".venv/**", "**/__pycache__/**"]
 
 
@@ -20,6 +23,7 @@ class Config:
     node_max_lines: int = 60
     seed_max_lines: int = 80
     ignore: list[str] = field(default_factory=lambda: list(DEFAULT_IGNORE))
+    legacy: list[str] = field(default_factory=list)
     error: str | None = None
 
 
@@ -37,6 +41,7 @@ def load_config(root: Path) -> Config:
         cfg.error = "garden.yaml이 key: value 형식이 아님"
         return cfg
     cfg.project = str(data.get("project") or cfg.project)
+    cfg.legacy = [k for k in LEGACY_CONFIG_KEYS if k in data]
     if data.get("context") in DETAILS:
         cfg.context = str(data["context"])
     elif "context" in data:

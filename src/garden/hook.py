@@ -18,7 +18,7 @@ def read_input(stream) -> dict:
     raw = stream.read()
     if isinstance(raw, bytes):
         raw = raw.decode("utf-8-sig", errors="replace")
-    data = json.loads(raw.lstrip("﻿"))
+    data = json.loads(raw.lstrip("\ufeff"))
     if not isinstance(data, dict):
         raise ValueError("hook input is not an object")
     return data
@@ -88,9 +88,7 @@ def pre(data: dict) -> dict | None:
     node = g.node_for(path)
     if node is None:
         return None
-    pending = []
-    if lock.lock_path(g).is_file():
-        pending = [lock.pending_line(p.a, p.b) for p in lock.pending(g) if p.a == node.id]
+    pending = [lock.pending_line(p.a, p.b) for p in lock.safe_pending(g) if p.a == node.id]
     text = context(g, node, pending=pending)
     cache = Cache(root, data.get("session_id"))
     if not cache.fresh(str(data.get("agent_id") or "main"), node.id, lock.fingerprint(text)):
@@ -122,8 +120,8 @@ def post(data: dict) -> dict | None:
             f"[garden] 카드 {f.level} {folder}: {f.msg}"
             for f in check(g).findings if f.level in CARD_LEVELS and f.where in where
         ]
-        if node is not None and lock.lock_path(g).is_file():
-            waiting = [p for p in lock.pending(g) if p.b == node.id]
+        if node is not None:
+            waiting = [p for p in lock.safe_pending(g) if p.b == node.id]
             if waiting:
                 parts.append(lock.alert_text(g, waiting))
     if not parts:

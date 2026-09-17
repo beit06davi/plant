@@ -15,15 +15,15 @@ CASES = [
     ("a/b/c.md", "**/c.md"),
     ("c.md", "**/c.md"),
     ("x/__pycache__/y.pyc", "**/__pycache__/**"),
-    ("contracts/ep01.md", "contracts/ep*.md"),
-    ("contracts/sub/ep01.md", "contracts/ep*.md"),
+    ("docs/ch01.md", "docs/ch*.md"),
+    ("docs/sub/ch01.md", "docs/ch*.md"),
     ("a/b", "a/?"),
     ("a/bc", "a/?"),
     ("A/B.md", "a/b.md"),
     ("data/x1.csv", "data/x[0-9].csv"),
     ("data/xa.csv", "data/x[!0-9].csv"),
     (".git/config", ".git/**"),
-    ("design/style_refs/calm/README.md", "design/style_refs/calm/**"),
+    ("assets/icons/app/README.md", "assets/icons/app/**"),
 ]
 
 

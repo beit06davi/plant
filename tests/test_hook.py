@@ -122,7 +122,15 @@ def test_run_is_fail_open(tree, monkeypatch, capsys):
 def test_run_writes_ascii_json(tree):
     out = io.StringIO()
     data = json.dumps(payload(tree, file_path=str(tree / "backend/db/store.py")), ensure_ascii=False)
-    assert hook.run("pre", stdin=io.BytesIO(("﻿" + data).encode("utf-8")), stdout=out) == 0
+    assert hook.run("pre", stdin=io.BytesIO(("\ufeff" + data).encode("utf-8")), stdout=out) == 0
     raw = out.getvalue()
     assert raw.isascii()
     assert json.loads(raw)["hookSpecificOutput"]["additionalContext"].startswith("[garden] backend/db")
+
+
+def test_hooks_survive_unreadable_lock(tree):
+    lock.lock_all(Garden.load(tree), today="2026-09-20")
+    (tree / ".garden/concept.lock").write_text("<<<<<<< HEAD\n", encoding="utf-8")
+    assert text_of(hook.pre(payload(tree, file_path=str(tree / "backend/db/store.py")))).startswith("[garden] backend/db")
+    edit(tree, "backend/booking/NODE.md", "(id, zone, status)", "(id, zone, status, until)")
+    assert hook.post(payload(tree, tool="Edit", file_path=str(tree / "backend/booking/NODE.md"))) is None

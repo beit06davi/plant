@@ -6,6 +6,6 @@ __pycache__/
 build/
 dist/
 
-# internal notes (own git) and the local CLAUDE.md that imports them
+# local only
 .notes/
 /CLAUDE.md

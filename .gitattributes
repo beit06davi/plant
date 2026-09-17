@@ -1,0 +1,2 @@
+# the plugin wrapper is a shell script: keep LF line endings on every checkout
+bin/garden text eol=lf

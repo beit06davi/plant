@@ -145,3 +145,41 @@ def test_history_and_resume(tree):
     assert "첫 시안 / 모바일" in text
     assert "확인 필요: frontend/seatmap ← backend/booking" in text
     assert "## backend/booking" not in text
+
+
+def break_lock(tree, text="<<<<<<< HEAD\n{}\n"):
+    (tree / ".garden/concept.lock").write_text(text, encoding="utf-8")
+
+
+@pytest.mark.parametrize("text", ["<<<<<<< HEAD\n{}\n", "[]", '{"edges": []}', '{"edges": {"a <- b": 3}}'])
+def test_unreadable_lock_is_reported_not_raised(tree, text):
+    locked(tree)
+    break_lock(tree, text)
+    g = Garden.load(tree)
+    assert lock.safe_pending(g) == []
+    found = [f for f in check(g).findings if f.code == "lock-parse"]
+    assert found and "garden lock --force" in found[0].msg
+    with pytest.raises(lock.LockError, match="lock --force"):
+        lock.pending(g)
+
+
+def test_unreadable_lock_recovery(tree):
+    locked(tree)
+    break_lock(tree)
+    ok, msg = lock.lock_all(Garden.load(tree), today=DAY2)
+    assert not ok and "--force" in msg
+    with pytest.raises(lock.LockError):
+        lock.lock_missing(Garden.load(tree))
+    with pytest.raises(lock.LockError):
+        lock.ack(Garden.load(tree), "reports/weekly", all_pending=True)
+    ok, _ = lock.lock_all(Garden.load(tree), force=True, today=DAY2)
+    assert ok and lock.status(Garden.load(tree)) == []
+
+
+def test_top_level_parent_is_empty_and_old_marker_is_accepted(tree):
+    locked(tree)
+    data = json.loads((tree / ".garden/concept.lock").read_text(encoding="utf-8"))
+    assert data["nodes"]["backend"]["parent"] == ""
+    data["nodes"]["backend"]["parent"] = "seed"
+    (tree / ".garden/concept.lock").write_text(json.dumps(data), encoding="utf-8")
+    assert lock.status(Garden.load(tree)) == []

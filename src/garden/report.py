@@ -1,19 +1,16 @@
 from __future__ import annotations
 
 import os
-import re
 
 from garden import lock
 from garden.cards import find_section, items
-from garden.model import Node
+from garden.model import TOP, Node
 from garden.tree import Garden, sibling_key
 
 
 def _pending_by_node(g: Garden) -> dict[str, list[str]]:
-    if not lock.lock_path(g).is_file():
-        return {}
     out: dict[str, list[str]] = {}
-    for p in lock.pending(g):
+    for p in lock.safe_pending(g):
         out.setdefault(p.a, []).append(p.b)
     return out
 
@@ -46,12 +43,12 @@ def map_tree(g: Garden, show_why: bool = False) -> str:
         children = g.children(parent)
         for i, n in enumerate(children):
             last = i == len(children) - 1
-            label = n.id if parent == "seed" else n.id[len(parent) + 1 :]
+            label = n.id if parent == TOP else n.id[len(parent) + 1 :]
             child_prefix = prefix + ("   " if last else "│  ")
             rows.append((prefix + ("└─ " if last else "├─ ") + label + "/", n, child_prefix))
             walk(n.id, child_prefix)
 
-    walk("seed", "")
+    walk(TOP, "")
     width = max((len(r[0]) for r in rows), default=0) + 2
     lines = [_goal_header(g)]
     for label, n, child_prefix in rows:
@@ -117,22 +114,22 @@ def map_order(g: Garden) -> str:
     return "\n".join(lines)
 
 
-def _sid(node_id: str) -> str:
-    return "n_" + re.sub(r"[^A-Za-z0-9]", "_", node_id)
-
-
 def _label(text: str) -> str:
     return text.replace('"', "#quot;")
 
 
 def map_mermaid(g: Garden) -> str:
+    """Graph ids are sequence numbers so non-ASCII folder names never collide."""
+    ids = {nid: f"n{i}" for i, nid in enumerate(sorted(g.nodes), 1)}
+    ids[TOP] = "seed"
     lines = ["flowchart TD", f'  seed(["SEED · {_label(g.config.project)}"])']
-    for n in sorted(g.nodes.values(), key=lambda x: x.id):
-        label = _label(f"{n.id}<br/>{g.top_goal(n) or '-'} · {n.purpose}")
-        lines.append(f'  {_sid(n.id)}["{label}"]')
-    for n in sorted(g.nodes.values(), key=lambda x: x.id):
-        parent = "seed" if n.parent == "seed" else _sid(n.parent)
-        lines.append(f"  {parent} --> {_sid(n.id)}")
+    for nid in sorted(g.nodes):
+        n = g.nodes[nid]
+        goal = g.top_goal(n) or "-"
+        label = _label(f"{nid}<br/>{goal} · {n.purpose}")
+        lines.append(f'  {ids[nid]}["{label}"]')
+    for nid in sorted(g.nodes):
+        lines.append(f"  {ids[g.nodes[nid].parent]} --> {ids[nid]}")
     for a, b in lock.edges(g):
-        lines.append(f"  {_sid(b)} -. 먼저 .-> {_sid(a)}")
+        lines.append(f"  {ids[b]} -. 먼저 .-> {ids[a]}")
     return "\n".join(lines)

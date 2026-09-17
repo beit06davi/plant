@@ -3,11 +3,11 @@ from garden.cards import find_section, items, load_card, load_seed, parse_sectio
 
 def test_frontmatter_with_bom_and_crlf(tmp_path):
     p = tmp_path / "NODE.md"
-    p.write_bytes("﻿---\r\nname: a\r\nserves: [G1]\r\n---\r\n## 불변조건\r\n- x\r\n".encode("utf-8"))
+    p.write_bytes("\ufeff---\r\npurpose: a\r\nserves: [G1]\r\n---\r\n## 메모\r\n- x\r\n".encode("utf-8"))
     c = load_card(p)
     assert c.error is None
-    assert c.meta == {"name": "a", "serves": ["G1"]}
-    assert items(c.sections["불변조건"]) == ["x"]
+    assert c.meta == {"purpose": "a", "serves": ["G1"]}
+    assert items(c.sections["메모"]) == ["x"]
 
 
 def test_missing_frontmatter():
@@ -39,7 +39,7 @@ def test_sections_level2_only():
 
 
 def test_find_section_prefix():
-    s = {"목표 (위에 있을수록 우선)": "x", "비목표 (가지치기 기준)": "y"}
+    s = {"목표 (위에 있을수록 우선)": "x", "비목표 (하지 않을 것)": "y"}
     assert find_section(s, "목표") == "x"
     assert find_section(s, "비목표") == "y"
     assert find_section(s, "없음") == ""

@@ -1,6 +1,6 @@
 project: {{project}}
 # 파일을 열 때 관련 폴더(needs·needed by)를 얼마나 보여줄지
-#   none: 폴더 이름만 · concept: 목적·이유·주는 것 · full: 카드 본문까지
+#   none: 폴더 이름만 · concept: 목적·주는 것 · full: 이유와 카드 본문까지
 context: concept
 context_budget: 1500           # 한 번에 주입하는 최대 글자 수
 card_max_lines: {node: 60, seed: 80}

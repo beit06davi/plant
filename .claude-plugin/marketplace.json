@@ -9,7 +9,7 @@
     {
       "name": "garden",
       "source": "./",
-      "description": "SEED.md and NODE.md folder cards: goal lineage, sibling order, and change alerts"
+      "description": "SEED.md and NODE.md folder cards: goal lineage, sibling priority, dependencies, and change alerts"
     }
   ]
 }

@@ -22,7 +22,7 @@ def test_concept_context(tree):
     assert "higher:" not in t
     assert "lineage: SEED > backend(예약 도메인과 저장소) > backend/booking" in t
     assert "why: 예약 판단을 한곳에 모아 화면이 규칙을 모르게 한다" in t
-    assert "order: backend 아래 1번째 — backend/booking(1) > backend/db(2)" in t
+    assert "siblings: backend 아래 중요도 순 — backend/booking(1) > backend/db(2) (이 폴더: 1번째)" in t
     assert f"needs: backend/db — {DB} · 주는 것: 예약 저장·조회 함수" in t
     assert "provides: 좌석 상태 목록 (id, zone, status)" in t
     assert "needed by: frontend/seatmap — 빈 좌석을 3초 안에 파악하게 한다" in t
@@ -51,7 +51,7 @@ def test_higher_goals_and_pending(tree):
     t = ctx(tree, "reports/weekly", budget=10000, pending=["reports/weekly ← backend/booking: …"])
     assert "higher: G1 이중 예약 없는 예약 | G2 3초 안에 빈 좌석 파악" in t
     assert "check: reports/weekly ← backend/booking" in t
-    assert "order: SEED 아래 3번째 — backend(1) > frontend(2) > reports/weekly" in t
+    assert "siblings: SEED 아래 중요도 순 — backend(1) > frontend(2) > reports/weekly (이 폴더: 3번째)" in t
 
 
 def test_budget_drops_far_ancestors_first(tree):
@@ -84,7 +84,7 @@ def test_trace(tree):
     g = Garden.load(tree)
     t = trace_text(g, g.nodes["backend/booking"])
     assert t.splitlines()[0] == f"backend/booking — {BOOKING}"
-    assert "└─ backend — 예약 도메인과 저장소 (순위 1)" in t
+    assert "└─ backend — 예약 도메인과 저장소 (중요도 1)" in t
     assert "   이유: 예약 판단을" in t
     assert "needs: backend/db" in t
     assert "needed by: frontend/seatmap, reports/weekly" in t

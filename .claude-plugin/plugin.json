@@ -1,7 +1,7 @@
 {
   "name": "garden",
-  "version": "0.4.0",
-  "description": "A folder format for agents: SEED.md holds ranked goals, NODE.md cards give each folder its purpose, reason, order, and links. Files opened in a folder get that context injected, and linked folders are told when a concept changes.",
+  "version": "0.4.1",
+  "description": "A folder format for agents: SEED.md holds ranked goals, and a NODE.md card in each folder gives its purpose, reason, sibling priority, and dependencies. Opening a file injects that context, and dependent folders are told when a concept changes.",
   "author": {
     "name": "beit06davi",
     "url": "https://github.com/beit06davi"

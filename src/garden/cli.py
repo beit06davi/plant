@@ -49,9 +49,7 @@ def _split(values: list[str] | None) -> list[str]:
 def _pending_lines(g: Garden, node_id: str) -> list[str]:
     from garden import lock
 
-    if not lock.lock_path(g).is_file():
-        return []
-    return [lock.pending_line(p.a, p.b) for p in lock.pending(g) if p.a == node_id]
+    return [lock.pending_line(p.a, p.b) for p in lock.safe_pending(g) if p.a == node_id]
 
 
 def cmd_init(args) -> int:
@@ -61,12 +59,16 @@ def cmd_init(args) -> int:
     plugin = args.plugin if args.plugin is not None else os.environ.get("GARDEN_PLUGIN") == "1"
     result = init(root, project=args.project, dry_run=args.dry_run, plugin=plugin)
     prefix = "(dry-run) " if args.dry_run else ""
-    for label, rels in (("생성", result.created), ("추가", result.updated), ("유지", result.skipped)):
+    for label, rels in (("생성", result.created), ("갱신", result.updated), ("유지", result.skipped)):
         for rel in rels:
             print(f"{prefix}{label}: {rel}")
-    if result.settings_diff:
+    if result.settings_diff and ".claude/settings.json" in result.updated:
         print(result.settings_diff.rstrip())
+    for note in result.notes:
+        print(f"주의: {note}")
     plant = "/garden:plant" if plugin else "/garden-plant"
+    if not args.dry_run and "CLAUDE.md" in result.created + result.updated:
+        print("CLAUDE.md는 세션을 시작할 때 읽히므로 Claude Code를 다시 연다.")
     print(f"다음: SEED.md에 목표를 쓰고 폴더마다 카드를 만든다 ({plant} 또는 garden add) → garden check → garden lock")
     return 0
 
@@ -204,12 +206,12 @@ def build_parser() -> argparse.ArgumentParser:
     s.set_defaults(func=cmd_init)
 
     s = sub.add_parser("add", help="폴더에 카드(NODE.md) 쓰기")
-    s.add_argument("folder")
+    s.add_argument("folder", help="카드를 둘 폴더 (프로젝트 최상위 기준 경로)")
     s.add_argument("--purpose", required=True, help="이 폴더가 있는 이유 한 줄")
     s.add_argument("--why", help="이 폴더를 따로 나눈 이유")
     s.add_argument("--serves", action="append", help="섬기는 SEED 목표 (G1 또는 G1,G2). 없으면 상위 카드를 따름")
-    s.add_argument("--priority", type=int, help="형제 폴더 중 순서 (1이 먼저)")
-    s.add_argument("--needs", action="append", help="먼저 있어야 하는 폴더 (쉼표로 여러 개)")
+    s.add_argument("--priority", type=int, help="형제 폴더 중 중요도 (1이 가장 중요)")
+    s.add_argument("--needs", action="append", help="먼저 있어야 하는 폴더 = 작업 순서 (최상위 기준 경로, 쉼표로 여러 개)")
     s.add_argument("--provides", help="다른 폴더에 내주는 것")
     s.set_defaults(func=cmd_add)
 
@@ -225,11 +227,11 @@ def build_parser() -> argparse.ArgumentParser:
     s.set_defaults(func=cmd_map)
 
     s = sub.add_parser("trace", help="SEED부터 그 폴더까지의 계보")
-    s.add_argument("ref")
+    s.add_argument("ref", help="폴더 (최상위 기준 경로) 또는 그 안의 파일")
     s.set_defaults(func=cmd_trace)
 
     s = sub.add_parser("context", help="파일을 열 때 주입되는 블록 출력")
-    s.add_argument("ref")
+    s.add_argument("ref", help="폴더 (최상위 기준 경로) 또는 그 안의 파일")
     s.add_argument("--detail", choices=DETAILS, help="관련 폴더 정보의 양 (기본: garden.yaml의 context)")
     s.add_argument("--budget", type=int, help="최대 글자 수")
     s.add_argument("--json", action="store_true")
@@ -250,7 +252,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.set_defaults(func=cmd_ack)
 
     s = sub.add_parser("log", help="폴더 HISTORY.md에 변경 기록")
-    s.add_argument("ref")
+    s.add_argument("ref", help="폴더 (최상위 기준 경로) 또는 그 안의 파일")
     s.add_argument("change")
     s.add_argument("--why")
     s.add_argument("--evidence")

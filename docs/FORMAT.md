@@ -13,7 +13,7 @@ garden 0.4 기준입니다. 도구 없이 이 문서만 보고도 파일을 쓰�
 | `.garden/concept.lock` | 최상위 | `garden lock`, `garden ack` | O |
 | `.garden/cache/` | 최상위 | 훅 | X |
 
-프로젝트 루트는 `garden.yaml`이 있는 가장 가까운 상위 폴더입니다(없으면 `SEED.md`).
+프로젝트 루트는 `garden.yaml`이 있는 가장 가까운 상위 폴더입니다(없으면 `SEED.md`). 카드와 명령에 쓰는 폴더 경로는 모두 루트 기준입니다.
 
 ## 2. SEED.md
 
@@ -37,7 +37,8 @@ project: studycafe            # 선택
 - 결제 기능 직접 구현
 ```
 
-- **목표**: `- G<숫자>: <내용>` 줄. 적힌 순서가 우선순위입니다. `— 측정 기준:` 뒤는 확인 방법입니다.
+- **목표**: `- G<숫자>: <내용>` 줄. 위에 있을수록 중요합니다. `— 측정 기준:` 뒤는 확인 방법입니다.
+- 목표에 `init`이 만든 틀(`<가장 중요한 목표>` 같은 `<…>`)이 남아 있으면 오류입니다.
 - 목표가 하나 이상 있어야 합니다.
 - `## 구조 원칙` 절의 항목은 `garden map --why`에 나옵니다.
 - 나머지 절은 자유입니다.
@@ -61,11 +62,11 @@ provides: 좌석 상태 목록 (id, zone, status)
 | `purpose` | 문자열 | 필수. 한 문장 (120자 넘으면 경고) |
 | `why` | 문자열 | 없으면 경고. 이 폴더를 따로 나눈 이유 |
 | `serves` | 목표 id 목록 | 필수. SEED에 있는 id여야 함 |
-| `priority` | 1 이상의 정수 | 선택. 같은 부모 아래에서 작을수록 먼저. 겹치면 경고 |
-| `needs` | 폴더 경로 목록 | 선택. 카드가 있는 폴더여야 함. 자기 자신·순환 금지 |
+| `priority` | 1 이상의 정수 | 선택. 같은 부모 아래 형제 중 중요도(1이 가장 중요). 겹치면 경고. 작업 순서는 정하지 않음 |
+| `needs` | 폴더 경로 목록 | 선택. 먼저 있어야 하는 폴더(작업 순서). 카드가 있는 폴더여야 함. 자기 자신·순환 금지 |
 | `provides` | 문자열 | 선택. 다른 폴더가 쓰는 결과의 요약 |
 
-- 그 밖의 칸은 garden이 읽지 않고 그대로 둡니다.
+- 그 밖의 칸은 garden이 읽지 않고 그대로 둡니다. 단 0.3에서 쓰던 `zone`, `uses`, `name`은 `check`가 경고합니다(`uses`의 연결은 `needs`로 옮김).
 - 본문은 자유입니다. 이 폴더의 규칙, 완료 기준, 메모 등 프로젝트가 정한 내용을 적습니다.
 - 카드 길이 기준은 60줄입니다(`garden.yaml`에서 변경).
 
@@ -77,13 +78,13 @@ provides: 좌석 상태 목록 (id, zone, status)
 - 프로젝트 최상위에는 `NODE.md`를 두지 않습니다(SEED가 그 역할).
 - 폴더를 옮기면 id가 바뀝니다. 그 폴더를 가리키는 `needs`도 고쳐야 합니다.
 
-### 순서
+### 중요도와 순서
 
 | 관계 | 근거 | 읽는 법 |
 |---|---|---|
 | 세로 | 폴더 중첩 | 하위 폴더는 상위 폴더의 목적을 나눠 맡는다 |
-| 형제 | `priority` | 같은 부모 아래에서 1이 먼저. 없는 카드는 뒤, 그 안에서는 이름순 |
-| 작업 순서 | `needs` | A needs B → B가 먼저. `garden map --order`가 단계로 묶는다 |
+| 중요도 | `priority` | 같은 부모 아래에서 1이 가장 중요. 없는 카드는 뒤, 그 안에서는 이름순 |
+| 작업 순서 | `needs` | A needs B → B를 먼저. `garden map --order`가 단계로 묶는다 |
 | 목표 | `serves` + SEED 순서 | 목표가 부딪히면 SEED에서 위에 있는 목표를 따른다 |
 
 ## 4. 주입 블록
@@ -97,7 +98,7 @@ provides: 좌석 상태 목록 (id, zone, status)
 | `higher:` | 그보다 앞선 SEED 목표 | G1만 섬기면 생략 |
 | `lineage:` | SEED부터 이 폴더까지, 상위 카드의 purpose | |
 | `why:` | 이 폴더를 나눈 이유 | why가 없으면 생략 |
-| `order:` | 형제 중 위치 | 형제가 없으면 생략 |
+| `siblings:` | 형제 폴더의 중요도 순서와 이 폴더의 위치 | 형제가 없으면 생략 |
 | `needs:` | 먼저 필요한 폴더 | |
 | `provides:` | 이 폴더가 내주는 것 | |
 | `needed by:` | 이 폴더를 needs로 가진 폴더 | |
@@ -113,7 +114,7 @@ provides: 좌석 상태 목록 (id, zone, status)
 | `concept` (기본) | purpose, 주는 것(provides) |
 | `full` | 위에 더해 why와 본문 앞부분 |
 
-글자 수가 `context_budget`(기본 1500, `full`은 두 배)을 넘으면 먼 상위 카드의 purpose → `more` → `needed by` → `higher` → `order` → `notes` 순서로 줄이고, 그래도 넘으면 뒤를 자릅니다.
+글자 수가 `context_budget`(기본 1500, `full`은 두 배)을 넘으면 먼 상위 카드의 purpose → `more` → `needed by` → `higher` → `siblings` → `notes` 순서로 줄이고, 그래도 넘으면 뒤를 자릅니다.
 
 ## 5. 변경 알림
 
@@ -122,6 +123,7 @@ provides: 좌석 상태 목록 (id, zone, status)
 - B의 개념이 기록과 달라지면 A에 **확인 필요**가 생깁니다. `check`, 주입 블록의 `check:`, 카드 수정 직후 알림에 나옵니다.
 - A 쪽에서 영향을 확인했으면 `garden ack A --from B`. A의 `HISTORY.md`에 한 줄이 남습니다.
 - 연결이 새로 생기거나 없어지면 `garden lock --missing`으로 정리합니다. `garden add`는 lock이 있으면 새 연결을 바로 기록합니다.
+- `.garden/concept.lock`이 병합 충돌 등으로 깨지면 `check`가 `lock-parse` 오류를 내고, 다른 명령과 훅은 확인 필요 없이 동작합니다. `garden lock --force`로 다시 기록합니다.
 
 ### HISTORY.md
 
@@ -137,8 +139,8 @@ provides: 좌석 상태 목록 (id, zone, status)
 
 | 수준 | 코드 |
 |---|---|
-| 오류 | `config` `seed-missing` `seed-parse` `seed-no-goals` `root-card` `card-parse` `purpose-missing` `serves-missing` `serves-invalid` `priority-invalid` `needs-self` `needs-missing` `needs-cycle` `lock-parse` |
-| 경고 | `seed-long` `purpose-long` `why-missing` `card-long` `priority-duplicate` `edge-unlocked` `edge-stale` `parent-changed` |
+| 오류 | `config` `seed-missing` `seed-parse` `seed-no-goals` `seed-placeholder` `root-card` `card-parse` `purpose-missing` `serves-missing` `serves-invalid` `priority-invalid` `needs-self` `needs-missing` `needs-cycle` `lock-parse` |
+| 경고 | `config-legacy` `seed-template` `seed-long` `purpose-long` `why-missing` `card-long` `card-legacy` `priority-duplicate` `edge-unlocked` `edge-stale` `parent-changed` |
 | 확인 필요 | `change-pending` |
 
 ## 7. garden.yaml

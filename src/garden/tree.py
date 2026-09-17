@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
 from garden.cards import SeedFile, load_card, load_seed
-from garden.model import Config, Node, load_config
+from garden.model import TOP, Config, Node, load_config
 
 
 @dataclass
@@ -118,7 +118,7 @@ class Garden:
                 self.issues.append(Issue("card-parse", f"{folder}/NODE.md", card.error))
                 continue
             parent = self._nearest(folder)
-            node = Node(id=folder, parent=parent.id if parent else "seed", card=card)
+            node = Node(id=folder, parent=parent.id if parent else TOP, card=card)
             self.nodes[folder] = node
             self._by_key[folder.lower()] = node
 
@@ -184,7 +184,7 @@ class Garden:
     def ancestors(self, node_id: str) -> list[Node]:
         out: list[Node] = []
         node = self.nodes.get(node_id)
-        while node is not None and node.parent != "seed":
+        while node is not None and node.parent != TOP:
             node = self.nodes.get(node.parent)
             if node is None:
                 break

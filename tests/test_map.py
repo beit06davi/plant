@@ -74,7 +74,33 @@ def test_order_empty(tmp_path):
 def test_mermaid(tree):
     text = map_mermaid(Garden.load(tree))
     assert text.startswith("flowchart TD")
-    assert "seed --> n_backend" in text
-    assert "n_backend --> n_backend_booking" in text
-    assert "n_backend_db -. 먼저 .-> n_backend_booking" in text
-    assert 'n_frontend_seatmap["frontend/seatmap<br/>G2 · 빈 좌석을 3초 안에 파악하게 한다"]' in text
+    # ids follow sorted folder ids: backend n1, backend/booking n2, backend/db n3, frontend n4, frontend/seatmap n5
+    assert "seed --> n1\n" in text
+    assert "n1 --> n2\n" in text
+    assert "n3 -. 먼저 .-> n2\n" in text
+    assert 'n5["frontend/seatmap<br/>G2 · 빈 좌석을 3초 안에 파악하게 한다"]' in text
+
+
+def test_mermaid_non_ascii_folders_stay_apart(tmp_path):
+    root = write_tree(tmp_path / "p", {
+        "SEED.md": "# SEED\n- G1: x\n",
+        "문서/NODE.md": card(purpose="a", serves=["G1"]),
+        "자료/NODE.md": card(purpose="b", serves=["G1"], needs=["문서"]),
+    })
+    text = map_mermaid(Garden.load(root))
+    assert 'n1["문서<br/>G1 · a"]' in text and 'n2["자료<br/>G1 · b"]' in text
+    assert "seed --> n1\n" in text and "seed --> n2\n" in text
+    assert text.endswith("n1 -. 먼저 .-> n2")
+
+
+def test_top_level_folder_named_seed(tmp_path):
+    root = write_tree(tmp_path / "p", {
+        "SEED.md": "# SEED\n- G1: x\n",
+        "seed/NODE.md": card(purpose="씨앗 데이터", serves=["G1"]),
+        "seed/raw/NODE.md": card(purpose="원본", serves=["G1"]),
+    })
+    g = Garden.load(root)
+    assert g.nodes["seed/raw"].parent == "seed" and g.nodes["seed"].parent == ""
+    lines = map_tree(g).splitlines()
+    assert lines[1].startswith("└─ seed/") and lines[2].startswith("   └─ raw/")
+    assert "seed --> n1\n" in map_mermaid(g) and "n1 --> n2" in map_mermaid(g)

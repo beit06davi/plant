@@ -2,7 +2,7 @@ import shutil
 
 from conftest import card, write_tree
 
-from garden.model import find_root
+from garden.model import TOP, find_root
 from garden.tree import Garden
 
 
@@ -15,14 +15,14 @@ def test_nodes_are_folder_paths(tree):
 def test_parents_follow_folders(tree):
     g = Garden.load(tree)
     assert g.nodes["backend/booking"].parent == "backend"
-    assert g.nodes["backend"].parent == "seed"
-    assert g.nodes["reports/weekly"].parent == "seed"
+    assert g.nodes["backend"].parent == TOP
+    assert g.nodes["reports/weekly"].parent == TOP
     assert [n.id for n in g.ancestors("frontend/seatmap")] == ["frontend"]
 
 
 def test_children_sorted_by_priority(tree):
     g = Garden.load(tree)
-    assert [n.id for n in g.children("seed")] == ["backend", "frontend", "reports/weekly"]
+    assert [n.id for n in g.children(TOP)] == ["backend", "frontend", "reports/weekly"]
     assert [n.id for n in g.children("backend")] == ["backend/booking", "backend/db"]
 
 

@@ -6,10 +6,11 @@ allowed-tools:
 ---
 garden 명령은 Bash 도구에서 실행한다.
 
-1. `garden resume $ARGUMENTS`를 실행한다. 폴더를 지정하면 그 폴더만 본다.
+요청: $ARGUMENTS
+
+1. 요청에 특정 폴더가 있으면 `garden resume <폴더>`, 없으면 `garden resume`을 실행한다. 폴더 경로는 프로젝트 최상위 기준이다.
 2. 결과를 바탕으로 짧게 정리한다.
    - 최근에 바뀐 것
-   - 확인 필요 항목 (`A ← B`): 먼저 처리할지 사용자에게 알린다
+   - 확인 필요 항목 (`A ← B`)
    - check 경고·오류
-   - 다음에 할 일 후보. SEED 목표 순서와 `garden map --order`의 순서를 따른다
-3. 무엇을 할지는 사용자 요청이 우선이다. 요청이 없으면 후보만 제시하고 묻는다.
+   - 다음에 할 일 후보. SEED 목표 순서와 `garden map --order`의 작업 순서를 참고한다

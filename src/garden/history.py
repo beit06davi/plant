@@ -71,14 +71,14 @@ def resume_text(g: Garden, node_id: str | None = None, last: int = 5, today: str
     from garden.validate import check
 
     nodes = [g.nodes[node_id]] if node_id else list(g.nodes.values())
-    pending = lock.pending(g) if lock.lock_path(g).is_file() else []
+    pending = lock.safe_pending(g)
     lines = [f"[resume] {g.config.project} — {today_str(today)}"]
     for n in nodes:
         lines.append("")
         lines.append(f"## {n.id} — {n.purpose}")
         meta = [f"목표 {', '.join(n.serves) or '-'}"]
         if n.priority is not None:
-            meta.append(f"순위 {n.priority}")
+            meta.append(f"중요도 {n.priority}")
         if n.needs:
             meta.append(f"needs {', '.join(n.needs)}")
         lines.append("- " + " · ".join(meta))
