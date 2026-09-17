@@ -1,0 +1,15 @@
+{
+  "name": "garden-plugins",
+  "description": "garden — goals and concepts written into your folder structure",
+  "owner": {
+    "name": "beit06davi",
+    "url": "https://github.com/beit06davi"
+  },
+  "plugins": [
+    {
+      "name": "garden",
+      "source": "./",
+      "description": "SEED.md and NODE.md folder cards: goal lineage, sibling order, and change alerts"
+    }
+  ]
+}

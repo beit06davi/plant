@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+
+# internal notes (own git) and the local CLAUDE.md that imports them
+.notes/
+/CLAUDE.md

@@ -1,0 +1,91 @@
+#!/bin/sh
+# garden CLI for the Claude Code plugin: finds Python 3.11+ with PyYAML (or uv) and runs the bundled package.
+# In hook mode it never exits non-zero: exit code 2 would make Claude Code block the tool call.
+PLUGIN_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+MAIN="$PLUGIN_DIR/garden_main.py"
+export GARDEN_PLUGIN=1
+
+on_windows() {
+  case "$(uname -s 2>/dev/null)" in
+    MINGW*|MSYS*|CYGWIN*) command -v cygpath >/dev/null 2>&1 ;;
+    *) return 1 ;;
+  esac
+}
+
+if on_windows; then
+  MAIN=$(cygpath -w "$MAIN")
+fi
+
+HOOK=0
+if [ "$1" = "hook" ]; then
+  HOOK=1
+  # Outside a garden project there is nothing to do, so skip starting Python.
+  d=${CLAUDE_PROJECT_DIR:-$(pwd)}
+  if on_windows; then
+    d=$(cygpath -u "$d")
+  fi
+  while [ ! -f "$d/garden.yaml" ]; do
+    parent=$(dirname -- "$d")
+    if [ "$parent" = "$d" ]; then
+      cat >/dev/null
+      exit 0
+    fi
+    d=$parent
+  done
+fi
+
+CACHE_DIR=${CLAUDE_PLUGIN_DATA:-${XDG_CACHE_HOME:-$HOME/.cache}/garden}
+CACHE_FILE="$CACHE_DIR/python"
+
+usable() {
+  "$1" -c 'import sys, yaml; sys.exit(0 if sys.version_info >= (3, 11) else 1)' >/dev/null 2>&1
+}
+
+PY=${GARDEN_PYTHON:-}
+if [ -z "$PY" ] && [ -f "$CACHE_FILE" ]; then
+  PY=$(cat "$CACHE_FILE")
+  if [ "$PY" != "uv" ] && ! command -v "$PY" >/dev/null 2>&1; then
+    PY=""
+  fi
+fi
+if [ -z "$PY" ]; then
+  for c in python3 python py; do
+    if command -v "$c" >/dev/null 2>&1 && usable "$c"; then
+      PY=$c
+      break
+    fi
+  done
+  if [ -z "$PY" ] && command -v uv >/dev/null 2>&1; then
+    PY=uv
+  fi
+  if [ -n "$PY" ]; then
+    mkdir -p "$CACHE_DIR" 2>/dev/null && printf '%s' "$PY" > "$CACHE_FILE" 2>/dev/null
+  fi
+fi
+
+if [ -z "$PY" ]; then
+  echo "garden: Python 3.11+ with PyYAML (or uv) is required. See the plugin README." >&2
+  if [ "$HOOK" = 1 ]; then
+    cat >/dev/null
+    exit 0
+  fi
+  exit 127
+fi
+
+run() {
+  if [ "$PY" = "uv" ]; then
+    uv run --quiet --no-project --python ">=3.11" --with pyyaml python "$MAIN" "$@"
+  else
+    "$PY" "$MAIN" "$@"
+  fi
+}
+
+if [ "$HOOK" = 1 ]; then
+  run "$@"
+  rc=$?
+  if [ "$rc" -ne 0 ]; then
+    echo "garden: hook failed (exit $rc); the tool call was not blocked" >&2
+  fi
+  exit 0
+fi
+run "$@"
