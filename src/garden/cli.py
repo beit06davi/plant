@@ -79,7 +79,7 @@ def cmd_add(args) -> int:
     g = _garden(args)
     path = add(
         g, args.folder, purpose=args.purpose, serves=_split(args.serves), why=args.why or "",
-        priority=args.priority, needs=_split(args.needs), provides=args.provides or "",
+        priority=args.priority, needs=_split(args.needs), provides=args.provides or "", create=args.create,
     )
     print(f"생성: {g.rel(path)}")
     return 0
@@ -213,6 +213,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--priority", type=int, help="형제 폴더 중 중요도 (1이 가장 중요)")
     s.add_argument("--needs", action="append", help="먼저 있어야 하는 폴더 = 작업 순서 (최상위 기준 경로, 쉼표로 여러 개)")
     s.add_argument("--provides", help="다른 폴더에 내주는 것")
+    s.add_argument("--create", action="store_true", help="폴더가 없으면 새로 만든다 (기본은 오류)")
     s.set_defaults(func=cmd_add)
 
     s = sub.add_parser("check", help="형식 검사 (0 정상, 1 경고·확인 필요, 2 오류)")

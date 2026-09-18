@@ -9,7 +9,17 @@ from garden.model import TOP
 from garden.tree import Garden
 
 PURPOSE_MAX = 120
-PLACEHOLDER = re.compile(r"<[^<>\n]*[가-힣][^<>\n]*>")  # template blanks such as <가장 중요한 목표>
+# a template blank is a whole value left as <…>, e.g. "<가장 중요한 목표>".
+# Text that merely contains angle brackets ("List<문자열>", "a < b") is left alone.
+PLACEHOLDER = re.compile(r"^<[^<>\n]+>$")
+
+
+def is_placeholder(value: str) -> bool:
+    return bool(PLACEHOLDER.match(value.strip()))
+
+
+def placeholder_lines(text: str) -> bool:
+    return any(is_placeholder(line.strip().lstrip("-*").strip()) for line in text.split("\n"))
 LEGACY_CARD_KEYS = ("zone", "uses", "name")
 
 
@@ -42,10 +52,8 @@ class Report:
         return json.dumps(data, ensure_ascii=False, indent=2)
 
 
-def check(g: Garden, propagation: bool | None = None) -> Report:
-    """propagation=None: also report pending changes whenever .garden/concept.lock exists."""
-    if propagation is None:
-        propagation = (g.root / ".garden" / "concept.lock").is_file()
+def check(g: Garden) -> Report:
+    """Card and SEED rules, plus what the lock file says once the project has one."""
     out: list[Finding] = []
 
     def add(level: str, code: str, where: str, msg: str) -> None:
@@ -63,11 +71,11 @@ def check(g: Garden, propagation: bool | None = None) -> Report:
             add("error", "seed-parse", "SEED.md", g.seed.error)
         if not g.seed.goals:
             add("error", "seed-no-goals", "SEED.md", "목표(`- G1: …`)가 하나도 없음")
-        blank_goals = [x.id for x in g.seed.goals if PLACEHOLDER.search(f"{x.text} {x.measure}")]
+        blank_goals = [x.id for x in g.seed.goals if is_placeholder(x.text) or is_placeholder(x.measure)]
         if blank_goals:
             add("error", "seed-placeholder", "SEED.md",
-                f"목표에 채우지 않은 틀(<…>)이 남아 있음: {', '.join(blank_goals)} — 실제 목표로 바꾼다")
-        elif any(PLACEHOLDER.search(text) for text in g.seed.sections.values()):
+                f"목표가 아직 틀(<…>) 그대로임: {', '.join(blank_goals)} — 실제 목표로 바꾼다")
+        elif any(placeholder_lines(text) for text in g.seed.sections.values()):
             add("warning", "seed-template", "SEED.md", "채우지 않은 틀(<…>)이 남아 있음")
         if g.seed.line_count > g.config.seed_max_lines:
             add("warning", "seed-long", "SEED.md", f"{g.seed.line_count}줄 (기준 {g.config.seed_max_lines}줄)")
@@ -114,10 +122,9 @@ def check(g: Garden, propagation: bool | None = None) -> Report:
     for cycle in needs_cycles(g):
         add("error", "needs-cycle", cycle[0], "needs 순환: " + " → ".join(cycle))
 
-    if propagation:
-        from garden.lock import status
+    from garden.lock import status
 
-        out.extend(status(g))
+    out.extend(status(g))
     return Report(out)
 
 

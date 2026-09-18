@@ -142,8 +142,9 @@ def safe_pending(g: Garden) -> list[Pending]:
 
 
 def status(g: Garden) -> list[Finding]:
+    """Findings about the lock file. Without one there is nothing to compare, so the list is empty."""
     if not lock_path(g).is_file():
-        return [Finding("warning", "lock-missing", LOCK_REL, "concept.lock 없음 — `garden lock`으로 기록")]
+        return []
     try:
         data = load_lock(g)
     except LockError as e:

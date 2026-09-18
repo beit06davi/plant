@@ -44,10 +44,10 @@ def test_lock_then_clean(tree):
     assert data["edges"]["frontend/seatmap <- backend/booking"]["at"] == DAY1
 
 
-def test_missing_lock_only_when_forced(tree):
+def test_without_a_lock_check_is_quiet(tree):
     g = Garden.load(tree)
-    assert check(g).exit_code == 0
-    assert {f.code for f in check(g, propagation=True).findings} == {"lock-missing"}
+    assert lock.status(g) == []
+    assert check(g).findings == []
 
 
 @pytest.mark.parametrize("old,new", [
@@ -183,3 +183,10 @@ def test_top_level_parent_is_empty_and_old_marker_is_accepted(tree):
     data["nodes"]["backend"]["parent"] = "seed"
     (tree / ".garden/concept.lock").write_text(json.dumps(data), encoding="utf-8")
     assert lock.status(Garden.load(tree)) == []
+
+
+def test_resume_keeps_project_level_findings(tree):
+    locked(tree)
+    (tree / ".garden/concept.lock").write_text("<<<<<<< HEAD\n", encoding="utf-8")
+    text = resume_text(Garden.load(tree), "frontend/seatmap", today=DAY2)
+    assert "lock을 읽을 수 없음" in text or "concept.lock`을 읽을 수 없음" in text

@@ -115,3 +115,13 @@ def test_top_level_priority_duplicate_names_seed(tree):
     edit.write_text(edit.read_text(encoding="utf-8").replace("priority: 2", "priority: 1"), encoding="utf-8")
     found = [f for f in check(Garden.load(tree)).of("warning") if f.code == "priority-duplicate"]
     assert found[0].where == "SEED"
+
+
+def test_placeholder_only_when_the_whole_value_is_a_blank(tree):
+    seed = (tree / "SEED.md").read_text(encoding="utf-8")
+    keep = seed.replace("- G2: 3초 안에 빈 좌석 파악", "- G2: 이용자가 <검색> 화면에서 3초 안에 찾는다 — 측정 기준: List<좌석> 길이")
+    (tree / "SEED.md").write_text(keep, encoding="utf-8")
+    assert "seed-placeholder" not in codes(tree)
+    blank = seed.replace("- G2: 3초 안에 빈 좌석 파악", "- G2: <다음 목표>")
+    (tree / "SEED.md").write_text(blank, encoding="utf-8")
+    assert "seed-placeholder" in codes(tree, "error")

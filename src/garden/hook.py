@@ -111,7 +111,7 @@ def post(data: dict) -> dict | None:
     parts: list[str] = []
     if rel.lower() == "seed.md":
         parts.append(SEED_NOTE)
-        parts += [f"[garden] {f.where}: {f.msg}" for f in check(g, propagation=False).of("error")]
+        parts += [f"[garden] {f.where}: {f.msg}" for f in check(g).of("error")]
     elif PurePosixPath(rel).name.lower() == "node.md":
         folder = str(PurePosixPath(rel).parent)
         node = g.nodes.get(folder)

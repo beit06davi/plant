@@ -169,9 +169,16 @@ def test_commands_survive_unreadable_lock(tree, capsys):
     assert code == 2 and "--force" in err
     code, _, err = run(capsys, "-C", str(tree), "ack", "reports/weekly", "--all")
     assert code == 2 and "--force" in err
-    code, out, _ = run(capsys, "-C", str(tree), "add", "ops", "--purpose", "운영", "--why", "운영 작업 분리", "--serves", "G3", "--needs", "backend/db")
+    code, out, _ = run(capsys, "-C", str(tree), "add", "ops", "--purpose", "운영", "--why", "운영 작업 분리",
+                       "--serves", "G3", "--needs", "backend/db", "--create")
     assert code == 0 and (tree / "ops/NODE.md").is_file()
     code, _, _ = run(capsys, "-C", str(tree), "lock", "--force")
     assert code == 0
     code, out, _ = run(capsys, "-C", str(tree), "check")
     assert code == 0, out
+
+
+def test_add_refuses_a_missing_folder(tree, capsys):
+    code, _, err = run(capsys, "-C", str(tree), "add", "bakend", "--purpose", "오타", "--serves", "G1")
+    assert code == 2 and "폴더가 없습니다" in err and "--create" in err
+    assert not (tree / "bakend").exists()

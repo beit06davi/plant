@@ -46,7 +46,7 @@ provides: 좌석 상태 목록 (id, zone, status)
 | needs | 먼저 있어야 하는 폴더. 작업 순서는 이 칸이 정한다 | |
 | provides | 다른 폴더에 내주는 것 (형식·결과물 요약) | |
 
-다른 칸을 더해도 된다. garden은 모르는 칸을 무시한다.
+다른 칸을 더해도 된다. garden은 모르는 칸을 무시한다. 단 `zone`·`uses`·`name`은 0.3에서 쓰던 칸이라 check가 경고한다.
 
 ## 위계 읽는 법
 
@@ -66,7 +66,7 @@ provides: 좌석 상태 목록 (id, zone, status)
    - serves는 그 폴더가 직접 돕는 목표만 적는다.
    - 형제끼리 priority(중요도)를 매긴다. SEED에서 앞선 목표를 섬기거나 상위 폴더의 목적에 더 핵심인 폴더가 1이다.
    - 다른 폴더의 결과가 있어야 하면 needs, 다른 폴더가 쓰는 결과를 만들면 provides를 적는다.
-5. `{{garden}} add <폴더> --purpose "…" --why "…" --serves G1 [--priority 1] [--needs 폴더] [--provides "…"]`로 쓰거나 NODE.md를 직접 쓴다.
+5. `{{garden}} add <폴더> --purpose "…" --why "…" --serves G1 [--priority 1] [--needs 폴더] [--provides "…"]`로 쓰거나 NODE.md를 직접 쓴다. 폴더가 아직 없으면 `--create`를 붙인다.
 6. `{{garden}} check`로 형식을 확인하고(종료 코드 2면 오류, 1이면 경고나 확인 필요) `{{garden}} lock`으로 현재 개념을 기록한다. 이 기록이 이후 변경 알림의 기준이다.
 7. 사람이 함께 있으면 `{{garden}} map --why`를 보여 주고 구조가 의도와 맞는지 묻는다.
 
@@ -98,12 +98,12 @@ provides: 좌석 상태 목록 (id, zone, status)
 | 명령 | 하는 일 |
 |---|---|
 | `init` | SEED.md, garden.yaml, CLAUDE.md 만들기 (있는 파일은 두고 빠진 것만) |
-| `add <폴더> --purpose … --serves G1 [--why --priority --needs --provides]` | 카드 쓰기 |
+| `add <폴더> --purpose … [--serves G1] [--why --priority --needs --provides]` | 카드 쓰기 (폴더가 없으면 오류, 만들려면 `--create`) |
 | `check [--json]` | 형식 검사 (0 정상, 1 경고·확인 필요, 2 오류) |
 | `map [--why \| --order \| --mermaid]` | 구조 보기 |
 | `trace <폴더>` | SEED부터 그 폴더까지의 계보 |
 | `context <폴더> [--detail none\|concept\|full] [--budget N] [--json]` | 주입 블록을 직접 출력 |
-| `lock [--missing] [--force]` | 현재 개념 기록 |
+| `lock [--missing \| --force]` | 현재 개념 기록 (`--force`는 깨진 기록도 새로 씀) |
 | `ack <폴더> --from <폴더> \| --all [--note …]` | 변경 확인 처리 |
 | `log <폴더> "<변경>" [--why … --evidence …]` | 이력 남기기 |
 | `resume [폴더]` | 이어받기 요약 |

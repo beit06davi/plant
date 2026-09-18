@@ -21,9 +21,10 @@ HOOK_MARK = "-m garden hook"
 BLOCK_START = "<!-- garden:start -->"
 BLOCK_END = "<!-- garden:end -->"
 CARD_KEYS = ("purpose", "why", "serves", "priority", "needs", "provides")
-# signs of garden 0.3 instructions left in a project
+# signs of garden 0.3 instructions left in a project; Korean particles may follow the command word
 LEGACY_TEXT = re.compile(
-    r"garden (?:route|sprout|ring|harvest|review|impact|prune|roles|events|validate)\b|root-worker|shoot-worker"
+    r"garden (?:route|sprout|ring|harvest|review|impact|prune|roles|events|validate)(?![A-Za-z0-9_-])"
+    r"|root-worker|shoot-worker"
 )
 LEGACY_AGENTS = (".claude/agents/root-worker.md", ".claude/agents/shoot-worker.md")
 
@@ -155,7 +156,8 @@ def init(
         outside = re.sub(re.escape(BLOCK_START) + r".*?" + re.escape(BLOCK_END), "", current, flags=re.S)
         if LEGACY_TEXT.search(outside):
             result.notes.append(
-                "CLAUDE.md에 이전 버전(0.3) garden 안내가 남아 있음 (route·sprout·ring 같은 없는 명령) — 그 부분을 지운다"
+                "CLAUDE.md에 이전 버전(0.3) garden 안내로 보이는 문장이 있음 (route·sprout·ring 같은 없는 명령) "
+                "— 읽어 보고 0.3 안내면 지운다"
             )
         if BLOCK_START in current:
             result.skipped.append("CLAUDE.md")
@@ -173,6 +175,11 @@ def init(
             old_skills.append(f".claude/skills/{skill_md.parent.name}")
     if old_skills:
         result.notes.append(f"이전 버전(0.3) 스킬이 없는 명령을 부름: {', '.join(old_skills)} — 지워도 됨")
+    settings_path = root / ".claude" / "settings.json"
+    if plugin and settings_path.is_file() and HOOK_MARK in read_text(settings_path):
+        result.notes.append(
+            ".claude/settings.json에 garden 훅이 있음 — 플러그인이 훅을 제공하므로 이 항목은 지워도 됨"
+        )
 
     if plugin:
         return result
@@ -199,7 +206,8 @@ def init(
 def card_text(meta: dict, body: str = "") -> str:
     ordered = {k: meta[k] for k in CARD_KEYS if meta.get(k) not in (None, "", [])}
     ordered.update({k: v for k, v in meta.items() if k not in CARD_KEYS and v not in (None, "", [])})
-    front = yaml.safe_dump(ordered, allow_unicode=True, sort_keys=False, width=1000)
+    # default_flow_style=None keeps short lists on one line: serves: [G1]
+    front = yaml.safe_dump(ordered, allow_unicode=True, sort_keys=False, width=1000, default_flow_style=None)
     body = body.strip()
     return f"---\n{front}---\n" + (f"{body}\n" if body else "")
 
@@ -214,14 +222,18 @@ def add(
     needs: list[str] | None = None,
     provides: str = "",
     body: str = "",
+    create: bool = False,
     today: str | None = None,
 ) -> Path:
-    """Write <folder>/NODE.md. serves defaults to the nearest parent card's goals."""
+    """Write <folder>/NODE.md. serves defaults to the nearest parent card's goals.
+    create=True also makes the folder; otherwise a missing folder is an error (usually a typo)."""
     rel = g.rel(folder)
     if rel is None or rel == "":
         raise InitError(f"프로젝트 안의 하위 폴더여야 합니다: {folder}")
     if g.ignored(rel):
         raise InitError(f"garden.yaml의 ignore에 걸리는 폴더입니다: {rel}")
+    if not (g.root / rel).is_dir() and not create:
+        raise InitError(f"폴더가 없습니다: {rel} (경로는 프로젝트 최상위 기준입니다. 새로 만들려면 --create)")
     if (g.root / rel / "NODE.md").exists():
         raise InitError(f"이미 카드가 있습니다: {rel}/NODE.md")
     purpose = " ".join(purpose.split())

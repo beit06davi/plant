@@ -91,7 +91,11 @@ def resume_text(g: Garden, node_id: str | None = None, last: int = 5, today: str
         for p in pending:
             if p.a == n.id:
                 lines.append(f"- 확인 필요: {lock.pending_line(p.a, p.b)}")
-    notes = [f for f in check(g).findings if f.level != "review" and (node_id is None or f.where == node_id)]
+    project_wide = {"SEED.md", "garden.yaml", lock.LOCK_REL}
+    notes = [
+        f for f in check(g).findings
+        if f.level != "review" and (node_id is None or f.where == node_id or f.where in project_wide)
+    ]
     if notes:
         lines += ["", "## check"] + [f"- [{f.level}] {f.where}: {f.msg}" for f in notes]
     return "\n".join(lines)

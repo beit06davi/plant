@@ -143,7 +143,7 @@ claude plugin update garden@garden-plugins
 
 업데이트한 뒤 Claude Code를 다시 엽니다.
 
-0.3을 쓰던 프로젝트에서 `garden init`을 다시 실행하면, `CLAUDE.md`에 남은 예전 안내(`garden route`, `sprout`, `ring` 등)와 예전 에이전트·스킬 파일을 찾아 알려 줍니다. 그 부분을 지웁니다. `garden check`는 예전 설정(`garden.yaml`의 `zones`, `roles` 등)과 카드 칸(`zone`, `uses`, `name`)을 경고로 알려 줍니다. `uses`에 적었던 연결은 `needs`에 폴더 경로로 옮깁니다.
+0.3을 쓰던 프로젝트에서 `garden init`을 다시 실행하면, `CLAUDE.md`에 남은 예전 안내(`garden route`, `sprout`, `ring` 등)와 예전 에이전트·스킬 파일이 보이면 알려 줍니다. 읽어 보고 0.3 안내면 지웁니다. `garden check`는 예전 설정(`garden.yaml`의 `zones`, `roles` 등)과 카드 칸(`zone`, `uses`, `name`)을 경고로 알려 줍니다. `uses`에 적었던 연결은 `needs`에 폴더 경로로 옮깁니다.
 
 ## 명령
 
@@ -152,7 +152,7 @@ claude plugin update garden@garden-plugins
 | 명령 | 하는 일 |
 |---|---|
 | `garden init` | 프로젝트 파일 만들기 (있는 파일은 유지) |
-| `garden add <폴더> --purpose … [--serves G1] [--why …] [--priority N] [--needs 폴더] [--provides …]` | 카드 쓰기. `--serves`를 빼면 상위 카드의 목표를 따름 |
+| `garden add <폴더> --purpose … [--serves G1] [--why …] [--priority N] [--needs 폴더] [--provides …] [--create]` | 카드 쓰기. `--serves`를 빼면 상위 카드의 목표를 따르고, 폴더가 없으면 오류(`--create`로 생성) |
 | `garden check [--json]` | 형식 검사 (0 정상, 1 경고·확인 필요, 2 오류) |
 | `garden map [--why \| --order \| --mermaid]` | 구조 보기 |
 | `garden trace <폴더>` | SEED부터 그 폴더까지 |
